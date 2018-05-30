@@ -26,7 +26,7 @@ var port = process.env.PORT || 3000;
 var router = express.Router();
 
 router.use(function(req, res, next) {
-    console.log('Something is happening.');
+    console.log('Request ............');
     next();
 });
 
@@ -80,6 +80,28 @@ app.post('/api/logincustomer', function (req, res) {
                 res.end();
             }else{
                 res.json({ message: 'true' ,details:JSON.parse(JSON.stringify(results[0]))});
+                res.end();
+            }
+           }
+  });
+ });
+
+ app.post('/api/getProductImage', function (req, res) {
+    var data={
+        productID: req.body.productID
+    }
+    db.query('SELECT productImage from products WHERE productID=?',[data.productID], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{
+                var buffer = new Buffer( results[0].productImage, 'binary' );
+                var bufferBase64 = buffer.toString('base64').trim();
+                res.json({ message: 'true' ,details:bufferBase64});
                 res.end();
             }
            }
@@ -159,11 +181,12 @@ app.post('/api/registercustomer', function (req, res) {
         productPrice: req.body.productPrice,
         productDesc: req.body.productDesc,
         productQuantity: req.body.productQuantity,
-        productAddedDateTime: req.body.productAddedDateTime
+        productAddedDateTime: req.body.productAddedDateTime,
+        productImage: req.body.productImage
      };
      db.query(`INSERT INTO productOnCart(userName,productOnCartID,productName,productID,productCat,productSize,productBrand,productColor,productPrice,productDesc,
-        productQuantity,productAddedDateTime) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [data.userName,data.productOnCartID,data.productName,data.productID,data.productCat,data.productSize,data.productBrand,data.productColor,data.productPrice,data.productDesc,data.productQuantity,data.productAddedDateTime], function (error, results, fields) {
+        productQuantity,productAddedDateTime,productImage) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [data.userName,data.productOnCartID,data.productName,data.productID,data.productCat,data.productSize,data.productBrand,data.productColor,data.productPrice,data.productDesc,data.productQuantity,data.productAddedDateTime,data.productImage], function (error, results, fields) {
 
         if (error){
         res.json({ message: 'false' });
