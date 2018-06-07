@@ -108,6 +108,68 @@ app.post('/api/logincustomer', function (req, res) {
   });
  });
 
+
+ app.post('/api/customercheckout', function (req, res) {
+    var data={
+        userName: req.body.userName
+    }
+    db.query('UPDATE activeCustomers SET userCheckout=? WHERE username=?',[1,data.userName], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{
+                res.json({ message: 'true'});
+                res.end();
+            }
+           }
+  });
+ });
+
+ app.post('/api/updateCheckout', function (req, res) {
+    var data={
+        userName: req.body.userName
+    }
+    db.query('UPDATE activeCustomers SET staffCheckout=?, userCheckout=? WHERE username=?',[0,0,data.userName], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{
+                res.json({ message: 'true'});
+                res.end();
+            }
+           }
+  });
+ });
+
+  app.post('/api/staffcheckout', function (req, res) {
+    var data={
+        userName: req.body.userName
+    }
+    db.query('SELECT staffCheckout FROM activeCustomers WHERE username=?',[data.userName], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{
+                res.json({ message: 'true',status:results});
+                res.end();
+            }
+           }
+  });
+ });
+
+
  app.post('/api/getCartData', function (req, res) {
     var data={
         userName: req.body.userName
@@ -122,6 +184,46 @@ app.post('/api/logincustomer', function (req, res) {
                 res.end();
             }else{
                 res.json({ message: 'true' ,cartData:results});
+                res.end();
+            }
+           }
+  });
+ });
+
+ app.post('/api/getCheckoutBill', function (req, res) {
+    var data={
+        userName: req.body.userName
+    }
+    db.query('SELECT * from checkoutBill WHERE username=?',[data.userName], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{
+                res.json({ message: 'true' ,billData:results});
+                res.end();
+            }
+           }
+  });
+ });
+
+ app.post('/api/getProductQuantity', function (req, res) {
+    var data={
+        productID: req.body.productID
+    }
+    db.query('SELECT productquantity from products WHERE productID=?',[data.productID], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{             
+                res.json({ message: 'true' ,productQuantity:results[0]});
                 res.end();
             }
            }
