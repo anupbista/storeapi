@@ -13,7 +13,7 @@ db.connect((err)=>{
     if(err){
         throw err;
     }
-    console.log("MYSQL Connected");
+    console.log("MySQl Connected");
 });
 
 const app = express();
@@ -133,7 +133,7 @@ app.post('/api/logincustomer', function (req, res) {
     var data={
         userName: req.body.userName
     }
-    db.query('UPDATE activeCustomers SET staffCheckout=?, userCheckout=? WHERE username=?',[0,0,data.userName], function (error, results, fields) {
+    db.query('DELETE FROM activeCustomers WHERE username=?',[data.userName], function (error, results, fields) {
         if (error){
             throw error;
            }
@@ -166,7 +166,7 @@ app.post('/api/logincustomer', function (req, res) {
                 res.end();
             }
            }
-  });
+    });
  });
 
 
@@ -189,6 +189,89 @@ app.post('/api/logincustomer', function (req, res) {
            }
   });
  });
+
+
+
+ app.post('/api/getrecommendedProducts', function (req, res) {
+    var data={
+        userName: req.body.userName
+    }
+    db.query('SELECT * from productOnCart WHERE userName="anup"', function (error, currentProduct, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(currentProduct.length<1){
+                // no items on cart so recommend new and on sale products
+                res.json({ message: '1false' });
+                res.end();
+            }else{       
+                // items exist on cart so recommend same products
+                var recommendedProducts = [];
+                var flag=1;
+                currentProduct.forEach(element => {
+
+                    var bestScore = 0;
+                    db.query('SELECT productID,productname,productdesc,productsize,productcategory,productcolor,productbrand,productprice,productquantity from products', function (error, otherProduct, fields) {
+                        if (error){
+                            throw error;
+                            }
+                            else{
+                            if(otherProduct.length<1){
+                                res.json({ message: '2false' });
+                                res.end();
+                            }else{
+                                console.log("For: "+element.productName)
+                                
+                                for (var j in otherProduct) {
+
+                                    var matchScore = 0;
+                                    console.log("For "+otherProduct[j].productname);
+                                    if(element.productBrand == otherProduct[j].productbrand){
+                                        matchScore++;
+                                        console.log("Brand");
+                                        console.log(element.productBrand);
+                                        console.log(matchScore);
+                                    }
+                                    if(element.productCat == otherProduct[j].productcategory){
+                                        console.log("Cat");
+                                        console.log(element.productCat);
+                                        matchScore++;
+                                        console.log(matchScore);                                      
+                                    }
+                                    if(element.productColor == otherProduct[j].productcolor){
+                                        console.log("Color");
+                                        console.log(element.productColor);
+                                        matchScore++;
+                                        console.log(matchScore);                                
+                                    }
+                                    if(element.productName != otherProduct[j].productname){
+                                        if((matchScore >= bestScore) && (matchScore != 0)){
+                                            console.log("match: "+matchScore);
+                                            console.log("best: "+bestScore);                                    
+                                            bestScore = matchScore;
+                                            recommendedProducts.push(otherProduct[j]);
+                                        }
+                                    }
+                                }
+                                if(flag==currentProduct.length){
+                                    console.log("Hello");
+                                    console.log(recommendedProducts);
+                                    res.json({ message: 'true' ,recommendedProducts:recommendedProducts});                
+                                    res.end();
+                                }
+                                flag++; 
+                            }
+                        }
+                   });
+                   
+                });
+                
+            }
+        }
+    });
+ });
+ 
 
  app.post('/api/getCheckoutBill', function (req, res) {
     var data={
@@ -284,38 +367,95 @@ app.post('/api/registercustomer', function (req, res) {
         productDesc: req.body.productDesc,
         productQuantity: req.body.productQuantity,
         productAddedDateTime: req.body.productAddedDateTime,
-        productImage: req.body.productImage
+        productImage: req.body.productImage,
+        time: req.body.time
      };
-     db.query(`INSERT INTO productOnCart(userName,productOnCartID,productName,productID,productCat,productSize,productBrand,productColor,productPrice,productDesc,
-        productQuantity,productAddedDateTime,productImage) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [data.userName,data.productOnCartID,data.productName,data.productID,data.productCat,data.productSize,data.productBrand,data.productColor,data.productPrice,data.productDesc,data.productQuantity,data.productAddedDateTime,data.productImage], function (error, results, fields) {
-
-        if (error){
-        res.json({ message: 'false' });
-        res.end();
-        throw error;
-       }
-       else{
-        db.query("SELECT productquantity FROM products WHERE productID=?", [data.productID], function (err, selectresult, fields) {
-            if (err) throw err;
-            else{
-                var updatedQuantity = selectresult[0].productquantity-data.productQuantity; 
-                db.query(`UPDATE products SET productquantity=? WHERE productID=?`,
-                [updatedQuantity,data.productID], function (error, updatedresults, fields) {
+     db.query(`SELECT productID FROM productOnCart WHERE productID=?`,[data.productID],function (error, existID, fields) {
+        if (error) throw error;
+        else{
+            if(existID.length < 1){
+                db.query(`INSERT INTO productOnCart(userName,productOnCartID,productName,productID,productCat,productSize,productBrand,productColor,productPrice,productDesc,
+                    productQuantity,productAddedDateTime,productImage,time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+                [data.userName,data.productOnCartID,data.productName,data.productID,data.productCat,data.productSize,data.productBrand,data.productColor,data.productPrice,data.productDesc,data.productQuantity,data.productAddedDateTime,data.productImage,data.time], function (error, results, fields) {
+            
                     if (error){
                     res.json({ message: 'false' });
                     res.end();
                     throw error;
                    }
                    else{
-                    res.json({ message: 'true' });
-                    res.end();
+            
+                    db.query("INSERT into activeCustomers(username,userCheckout,staffCheckout) VALUES(?,?,?) ON DUPLICATE KEY UPDATE username=?", [data.userName, 0, 0,data.userName], function (err, selectresult, fields) {
+                        if (err) throw err;
+                        console.log("user inserted to active list")
+                    });
+            
+                    db.query("SELECT productquantity FROM products WHERE productID=?", [data.productID], function (err, selectresult, fields) {
+                        if (err) throw err;
+                        else{
+                            var updatedQuantity = selectresult[0].productquantity-data.productQuantity; 
+                            db.query(`UPDATE products SET productquantity=? WHERE productID=?`,
+                            [updatedQuantity,data.productID], function (error, updatedresults, fields) {
+                                if (error){
+                                res.json({ message: 'false' });
+                                res.end();
+                                throw error;
+                               }
+                               else{
+                                res.json({ message: 'true' });
+                                res.end();
+                               }
+                             });
+                        }
+                      });
                    }
                  });
             }
-          });
-       }
+            else{
+                 db.query("SELECT productQuantity,productPrice FROM productOnCart WHERE productID=?", [data.productID], function (err, selectresults, fields) {
+                        if (err) throw err;
+                        else{
+                            var updateQ = selectresults[0].productQuantity + data.productQuantity;
+                            var updateP = parseInt(selectresults[0].productPrice) + (data.productQuantity * parseInt(data.productPrice));
+                            console.log(selectresults[0]);
+                            console.log(updateQ);
+                            console.log(updateP);
+                db.query(`UPDATE productOnCart SET productQuantity=? , productPrice=? WHERE productID=?`,
+                [updateQ,updateP,data.productID], function (error, results, fields) {
+            
+                    if (error){
+                    res.json({ message: 'false' });
+                    res.end();
+                    throw error;
+                   }
+                   else{
+                    console.log("cart updated");
+                    db.query("SELECT productquantity FROM products WHERE productID=?", [data.productID], function (err, selectresult, fields) {
+                        if (err) throw err;
+                        else{
+                            var updatedQuantity = selectresult[0].productquantity-data.productQuantity; 
+                            db.query(`UPDATE products SET productquantity=? WHERE productID=?`,
+                            [updatedQuantity,data.productID], function (error, updatedresults, fields) {
+                                if (error){
+                                res.json({ message: 'false' });
+                                res.end();
+                                throw error;
+                               }
+                               else{
+                                res.json({ message: 'true' });
+                                res.end();
+                               }
+                             });
+                        }
+                      });
+                   }
+                 });
+                }
+                });
+            }
+        }
      });
+    
  });
 
 
@@ -323,7 +463,8 @@ app.post('/api/registercustomer', function (req, res) {
     var data = {
         productOnCartID: req.body.productOnCartID,
         productID: req.body.productID,
-        productQuantity: req.body.productQuantity
+        productQuantity: req.body.productQuantity,
+        userName: req.body.userName        
      };       
         db.query(`DELETE FROM productOnCart WHERE productOnCartID=?`,
         [data.productOnCartID], function (error, results, fields) {
@@ -345,8 +486,31 @@ app.post('/api/registercustomer', function (req, res) {
                     throw error;
                    }
                    else{
-                    res.json({ message: 'true' });
-                    res.end();
+
+                    db.query('SELECT * from productOnCart WHERE username=?',[data.userName], function (error, sresults, fields) {
+                        if (error){
+                            throw error;
+                           }
+                           else{
+                            if(sresults.length<1){
+                                db.query('DELETE FROM activeCustomers WHERE username=?',[data.userName], function (error, dresults, fields) {
+                                    if (error){
+                                        res.json({ message: 'false' });
+                                        res.end();
+                                        throw error;
+                                       }else{
+                                           console.log("user removed");
+                                            res.json({ message: 'true'});
+                                            res.end();
+                                       }
+                              });
+                            }else{
+                                res.json({ message: 'true'});
+                                res.end();
+                            }
+                           }
+                  });
+                    
                    }
                  });
             }
