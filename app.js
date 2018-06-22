@@ -191,23 +191,153 @@ app.post('/api/logincustomer', function (req, res) {
  });
 
 
+ app.post('/api/getProductInfo', function (req, res) {
+    var data={
+        productID: req.body.productID
+    }
+    db.query('SELECT * from products WHERE productID=?',[data.productID], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{
+                res.json({ message: 'true' ,productInfo:results});
+                res.end();
+            }
+           }
+  });
+ });
+
+ Array.prototype.contains = function(element){
+    return this.indexOf(element) > -1;
+};
 
  app.post('/api/getrecommendedProducts', function (req, res) {
     var data={
         userName: req.body.userName
     }
-    db.query('SELECT * from productOnCart WHERE userName="anup"', function (error, currentProduct, fields) {
+    db.query('SELECT * from productOnCart WHERE userName=?', [data.userName], function (error, currentProduct, fields) {
         if (error){
             throw error;
            }
            else{
-            if(currentProduct.length<1){
-                // no items on cart so recommend new and on sale products
-                res.json({ message: '1false' });
-                res.end();
+            if(currentProduct.length<1){              
+
+
+                db.query('SELECT * from sales INNER JOIN products ON sales.productID = products.productID WHERE username=?',[data.userName], function (error, salesResults, fields) {
+                    if (error){
+                        throw error;
+                       }
+                       else{
+                        if(salesResults.length<1){
+                            // from sale product
+                            console.log("FROM SALE");
+                            db.query('SELECT saleProducts.productID,saleProducts.salePrice, products.productname, products.productprice from saleProducts INNER JOIN products ON saleProducts.productID = products.productID', function (error, saleResults, fields) {
+                                if (error){
+                                    throw error;
+                                   }
+                                   else{
+                                    if(saleResults.length<1){
+                                        res.json({ message: 'false' });
+                                        res.end();
+                                    }else{
+                                        console.log(saleResults);
+                                        res.json({ message: 'true', type:'sale' ,recommendedProducts:saleResults});
+                                        res.end();
+                                    }
+                                }
+                            });
+                        }else{
+// from sales
+                            console.log("FROM SALES");
+                            var recommendedProducts = [];
+                            var recommendedProductsID = [];                
+                            var flag=1;
+                            salesResults.forEach(element => {
+            
+                                var bestScore = 0;
+                                db.query('SELECT productID,productname,productdesc,productsize,productcategory,productcolor,productbrand,productprice,productquantity from products', function (error, otherProduct, fields) {
+                                    if (error){
+                                        throw error;
+                                        }
+                                        else{
+                                        if(otherProduct.length<1){
+                                            res.json({ message: 'false' });
+                                            res.end();
+                                        }else{
+                                            console.log("For: "+element.productname);
+                                            console.log(otherProduct);
+                                            for (var j in otherProduct) {
+            
+                                                var matchScore = 0;
+                                                console.log("For "+otherProduct[j].productname);
+                                                if(element.productbrand == otherProduct[j].productbrand){
+                                                    matchScore++;
+                                                    console.log("Brand");
+                                                    console.log(element.productbrand);
+                                                    console.log(matchScore);
+                                                }
+                                                if(element.productcategory == otherProduct[j].productcategory){
+                                                    console.log("Cat");
+                                                    console.log(element.productcategory);
+                                                    matchScore++;
+                                                    console.log(matchScore);                                      
+                                                }
+                                                if(element.productcolor == otherProduct[j].productcolor){
+                                                    console.log("Color");
+                                                    console.log(element.productcolor);
+                                                    matchScore++;
+                                                    console.log(matchScore);                                
+                                                }
+                                                if(element.productname != otherProduct[j].productname){
+                                                    if(!recommendedProductsID.contains(otherProduct[j].productID)){
+                                                        
+                                                        if(recommendedProductsID.length > 11){
+                                                            if((matchScore > bestScore) && (matchScore != 0)){
+                                                                console.log("match: "+matchScore);
+                                                                console.log("best: "+bestScore);                                    
+                                                                bestScore = matchScore;
+                                                                recommendedProducts.push(otherProduct[j]);                             
+                                                                recommendedProductsID.push(otherProduct[j].productID);                                                
+                                                            }
+                                                        }
+                                                        else{
+                                                            if((matchScore >= bestScore) && (matchScore != 0)){
+                                                                console.log("match: "+matchScore);
+                                                                console.log("best: "+bestScore);                                    
+                                                                bestScore = matchScore;
+                                                                recommendedProducts.push(otherProduct[j]);                                                           
+                                                                recommendedProductsID.push(otherProduct[j].productID);                                                
+                                                            }
+                                                        }
+                                                        
+                                                    }
+                                                }
+                                            }
+                                            if(flag==salesResults.length){
+                                                console.log("Final Reults");
+                                                console.log(recommendedProducts);
+                                                res.json({ message: 'true', type:'recommended' ,recommendedProducts:recommendedProducts});                
+                                                res.end();
+                                            }
+                                            flag++; 
+                                        }
+                                    }
+                               });
+                               
+                            });
+                        }
+                    }
+                });
+
             }else{       
                 // items exist on cart so recommend same products
+                console.log("FROM CART");                
                 var recommendedProducts = [];
+                var recommendedProductsID = [];                
                 var flag=1;
                 currentProduct.forEach(element => {
 
@@ -218,7 +348,7 @@ app.post('/api/logincustomer', function (req, res) {
                             }
                             else{
                             if(otherProduct.length<1){
-                                res.json({ message: '2false' });
+                                res.json({ message: 'false' });
                                 res.end();
                             }else{
                                 console.log("For: "+element.productName)
@@ -246,18 +376,33 @@ app.post('/api/logincustomer', function (req, res) {
                                         console.log(matchScore);                                
                                     }
                                     if(element.productName != otherProduct[j].productname){
-                                        if((matchScore >= bestScore) && (matchScore != 0)){
-                                            console.log("match: "+matchScore);
-                                            console.log("best: "+bestScore);                                    
-                                            bestScore = matchScore;
-                                            recommendedProducts.push(otherProduct[j]);
+                                        if(!recommendedProductsID.contains(otherProduct[j].productID)){
+                                            
+                                            if(recommendedProductsID.length > 11){
+                                                if((matchScore > bestScore) && (matchScore != 0)){
+                                                    console.log("match: "+matchScore);
+                                                    console.log("best: "+bestScore);                                    
+                                                    bestScore = matchScore;
+                                                    recommendedProducts.push(otherProduct[j]);
+                                                    recommendedProductsID.push(otherProduct[j].productID);                                                
+                                                }
+                                            }
+                                            else{
+                                                if((matchScore >= bestScore) && (matchScore != 0)){
+                                                    console.log("match: "+matchScore);
+                                                    console.log("best: "+bestScore);                                    
+                                                    bestScore = matchScore;
+                                                    recommendedProducts.push(otherProduct[j]);
+                                                    recommendedProductsID.push(otherProduct[j].productID);                                                
+                                                }
+                                            }
+                                            
                                         }
                                     }
                                 }
                                 if(flag==currentProduct.length){
-                                    console.log("Hello");
                                     console.log(recommendedProducts);
-                                    res.json({ message: 'true' ,recommendedProducts:recommendedProducts});                
+                                    res.json({ message: 'true', type:'recommended' ,recommendedProducts:recommendedProducts});                
                                     res.end();
                                 }
                                 flag++; 
