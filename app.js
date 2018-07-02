@@ -417,7 +417,6 @@ app.post('/api/logincustomer', function (req, res) {
     });
  });
  
-
  app.post('/api/getCheckoutBill', function (req, res) {
     var data={
         userName: req.body.userName
