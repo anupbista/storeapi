@@ -111,9 +111,10 @@ app.post('/api/logincustomer', function (req, res) {
 
  app.post('/api/customercheckout', function (req, res) {
     var data={
-        userName: req.body.userName
+        userName: req.body.userName,
+        paymentmethod: req.body.paymentmethod        
     }
-    db.query('UPDATE activeCustomers SET userCheckout=? WHERE username=?',[1,data.userName], function (error, results, fields) {
+    db.query('UPDATE activeCustomers SET userCheckout=? , paymentmethod=? WHERE username=?',[1,data.paymentmethod,data.userName], function (error, results, fields) {
         if (error){
             throw error;
            }
@@ -402,8 +403,12 @@ app.post('/api/logincustomer', function (req, res) {
                                 }
                                 if(flag==currentProduct.length){
                                     console.log(recommendedProducts);
-                                    res.json({ message: 'true', type:'recommended' ,recommendedProducts:recommendedProducts});                
-                                    res.end();
+                                    if(recommendedProducts.length == 0){
+
+                                    }else{
+                                        res.json({ message: 'true', type:'recommended' ,recommendedProducts:recommendedProducts});                
+                                        res.end();
+                                    }
                                 }
                                 flag++; 
                             }
@@ -512,15 +517,17 @@ app.post('/api/registercustomer', function (req, res) {
         productQuantity: req.body.productQuantity,
         productAddedDateTime: req.body.productAddedDateTime,
         productImage: req.body.productImage,
-        time: req.body.time
+        time: req.body.time,
+        homedelivery: req.body.homedelivery
      };
-     db.query(`SELECT productID FROM productOnCart WHERE productID=?`,[data.productID],function (error, existID, fields) {
+     console.log(data.homedelivery)
+     db.query(`SELECT productID FROM productOnCart WHERE productID=? and homedelivery=?`,[data.productID,data.homedelivery],function (error, existID, fields) {
         if (error) throw error;
         else{
             if(existID.length < 1){
                 db.query(`INSERT INTO productOnCart(userName,productOnCartID,productName,productID,productCat,productSize,productBrand,productColor,productPrice,productDesc,
-                    productQuantity,productAddedDateTime,productImage,time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-                [data.userName,data.productOnCartID,data.productName,data.productID,data.productCat,data.productSize,data.productBrand,data.productColor,data.productPrice,data.productDesc,data.productQuantity,data.productAddedDateTime,data.productImage,data.time], function (error, results, fields) {
+                    productQuantity,productAddedDateTime,productImage,time,homedelivery) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+                [data.userName,data.productOnCartID,data.productName,data.productID,data.productCat,data.productSize,data.productBrand,data.productColor,data.productPrice,data.productDesc,data.productQuantity,data.productAddedDateTime,data.productImage,data.time,data.homedelivery], function (error, results, fields) {
             
                     if (error){
                     res.json({ message: 'false' });
@@ -529,7 +536,7 @@ app.post('/api/registercustomer', function (req, res) {
                    }
                    else{
             
-                    db.query("INSERT into activeCustomers(username,userCheckout,staffCheckout) VALUES(?,?,?) ON DUPLICATE KEY UPDATE username=?", [data.userName, 0, 0,data.userName], function (err, selectresult, fields) {
+                    db.query("INSERT into activeCustomers(username,userCheckout,staffCheckout,paymentmethod) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE username=?", [data.userName, 0, 0,"cash",data.userName], function (err, selectresult, fields) {
                         if (err) throw err;
                         console.log("user inserted to active list")
                     });
