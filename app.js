@@ -226,8 +226,6 @@ app.post('/api/logincustomer', function (req, res) {
            }
            else{
             if(currentProduct.length<1){              
-
-
                 db.query('SELECT * from sales INNER JOIN products ON sales.productID = products.productID WHERE username=?',[data.userName], function (error, salesResults, fields) {
                     if (error){
                         throw error;
@@ -395,6 +393,10 @@ app.post('/api/logincustomer', function (req, res) {
                                                     bestScore = matchScore;
                                                     recommendedProducts.push(otherProduct[j]);
                                                     recommendedProductsID.push(otherProduct[j].productID);                                                
+                                                }
+                                                else{
+                                                    //match score is zero so recommend from products
+                                                     
                                                 }
                                             }
                                             
