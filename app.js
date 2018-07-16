@@ -191,6 +191,26 @@ app.post('/api/logincustomer', function (req, res) {
   });
  });
 
+ app.post('/api/getOrderData', function (req, res) {
+    var data={
+        userName: req.body.userName
+    }
+    db.query('SELECT * from orders INNER JOIN products ON orders.productID = products.productID WHERE username=?',[data.userName], function (error, results, fields) {
+        if (error){
+            throw error;
+           }
+           else{
+            if(results.length<1){
+                res.json({ message: 'false' });
+                res.end();
+            }else{
+                res.json({ message: 'true' ,orderData:results});
+                res.end();
+            }
+           }
+    });
+ });
+
 
  app.post('/api/getProductInfo', function (req, res) {
     var data={
