@@ -232,217 +232,221 @@ app.post('/api/logincustomer', function (req, res) {
   });
  });
 
- Array.prototype.contains = function(element){
-    return this.indexOf(element) > -1;
-};
 
- app.post('/api/getrecommendedProducts', function (req, res) {
-    var data={
-        userName: req.body.userName
-    }
-    db.query('SELECT * from productOnCart WHERE userName="anup"', function (error, currentProduct, fields) {
-        if (error){
-            throw error;
-           }
-           else{
-            if(currentProduct.length<1){              
-                db.query('SELECT * from sales INNER JOIN products ON sales.productID = products.productID WHERE username="anup"',[data.userName], function (error, salesResults, fields) {
-                    if (error){
-                        throw error;
-                       }
-                       else{
-                        if(salesResults.length<1){
-                            // from sale product
-                            console.log("FROM SALE");
-                            db.query('SELECT saleProducts.productID,saleProducts.salePrice, products.productname, products.productprice from saleProducts INNER JOIN products ON saleProducts.productID = products.productID', function (error, saleResults, fields) {
-                                if (error){
-                                    throw error;
-                                   }
-                                   else{
-                                    if(saleResults.length<1){
-                                        res.json({ message: 'false' });
+
+app.post('/api/getrecommendedProducts', function (req, res) {
+    db.query('SELECT * from productOnCart WHERE userName="anup"', function (error, cartProducts, fields) {
+        if(error) throw error;
+        else{
+            if(cartProducts.length<1){
+                console.log("No Products On Cart");
+                db.query('SELECT * from checkoutBill INNER JOIN products ON checkoutBill.productID=products.productID WHERE userName="anup"', function (error, billProducts, fields) {
+                    if(error) throw error;
+                    else{
+                        if(billProducts.length<1){
+                            console.log("No Products On Bill");
+                            db.query('SELECT * from products ORDER BY RAND() LIMIT 10', function (error, products, fields) {
+                                if(error) throw error;
+                                else{
+                                    if(products.length<1){
+                                        console.log("No Products");
                                         res.end();
                                     }else{
-                                        console.log(saleResults);
-                                        res.json({ message: 'true', type:'sale' ,recommendedProducts:saleResults});
+                                        console.log("Products");
+                                        res.json({ message: 'true', type:'random' ,recommendedProducts:products});
                                         res.end();
                                     }
                                 }
                             });
+                            
                         }else{
-// from sales
-                            console.log("FROM SALES");
-                            var recommendedProducts = [];
-                            var recommendedProductsID = [];                
-                            var flag=1;
-                            salesResults.forEach(element => {
-            
-                                var bestScore = 0;
-                                db.query('SELECT productID,productname,productdesc,productsize,productcategory,productcolor,productbrand,productprice,productquantity from products', function (error, otherProduct, fields) {
-                                    if (error){
-                                        throw error;
-                                        }
-                                        else{
-                                        if(otherProduct.length<1){
-                                            res.json({ message: 'false' });
+                            console.log("Products On Bill");
+                            var flag = 1;
+                            var result = [];
+                            billProducts.forEach(billElement =>{
+                                db.query('SELECT * from products', function (error, products, fields) {
+                                    if(error) throw error;
+                                    else{
+                                        if(products.length<1){
+                                            console.log("No Products");
                                             res.end();
                                         }else{
-                                            console.log("For: "+element.productname);
-                                            console.log(otherProduct);
-                                            for (var j in otherProduct) {
-            
-                                                var matchScore = 0;
-                                                console.log("For "+otherProduct[j].productname);
-                                                if(element.productbrand == otherProduct[j].productbrand){
-                                                    matchScore++;
-                                                    console.log("Brand");
-                                                    console.log(element.productbrand);
-                                                    console.log(matchScore);
+                                            products.forEach(productElement => {
+                                                var score = 0;
+                                                if(billElement.productbrand == productElement.productbrand){
+                                                    score++;
                                                 }
-                                                if(element.productcategory == otherProduct[j].productcategory){
-                                                    console.log("Cat");
-                                                    console.log(element.productcategory);
-                                                    matchScore++;
-                                                    console.log(matchScore);                                      
+                                                if(billElement.productcategory == productElement.productcategory){
+                                                    score++;
                                                 }
-                                                if(element.productcolor == otherProduct[j].productcolor){
-                                                    console.log("Color");
-                                                    console.log(element.productcolor);
-                                                    matchScore++;
-                                                    console.log(matchScore);                                
+                                                if(billElement.productcolor == productElement.productcolor){
+                                                    score++;
                                                 }
-                                                if(element.productname != otherProduct[j].productname){
-                                                    if(!recommendedProductsID.contains(otherProduct[j].productID)){
-                                                        
-                                                        if(recommendedProductsID.length > 11){
-                                                            if((matchScore > bestScore) && (matchScore != 0)){
-                                                                console.log("match: "+matchScore);
-                                                                console.log("best: "+bestScore);                                    
-                                                                bestScore = matchScore;
-                                                                recommendedProducts.push(otherProduct[j]);                             
-                                                                recommendedProductsID.push(otherProduct[j].productID);                                                
-                                                            }
+                                                if(score != 0){
+                                                    if(billElement.productname != productElement.productname){
+                                                        if(!result.contains(productElement.productID)){
+                                                            result.push({id:productElement.productID,score:score});
                                                         }
-                                                        else{
-                                                            if((matchScore >= bestScore) && (matchScore != 0)){
-                                                                console.log("match: "+matchScore);
-                                                                console.log("best: "+bestScore);                                    
-                                                                bestScore = matchScore;
-                                                                recommendedProducts.push(otherProduct[j]);                                                           
-                                                                recommendedProductsID.push(otherProduct[j].productID);                                                
-                                                            }
-                                                        }
-                                                        
                                                     }
                                                 }
-                                            }
-                                            if(flag==salesResults.length){
+                                            });
+                                            if(flag == billProducts.length){
                                                 console.log("Final Reults");
-                                                console.log(recommendedProducts);
-                                                res.json({ message: 'true', type:'recommended' ,recommendedProducts:recommendedProducts});                
+                                                console.log(result);        
+            
+                                                // Sorting
+                                                var scoreArray = []; 
+                                                for(var i=0;i<result.length;i++){
+                                                    scoreArray.push(result[i].score);
+                                                }
+                                                console.log(scoreArray);
+                                                
+                                                console.log("Original array: " + scoreArray);
+                                                var sortedArray = quick_Sort(scoreArray);
+                                                console.log("Sorted array: " + sortedArray);
+            
+                                                // Final sorted list
+                                                console.log("Final Sorted List i.e Only 10 items");
+                                                console.log(sortedArray.slice(0,10));
+            
+                                                var filteredList = removeDuplicates(sortedArray.slice(0,10));
+                                                console.log("Filtered List");
+                                                console.log(filteredList);
+            
+                                                // find product of respective score from final sorted list
+                                                var recommendedProducts = [];
+                                                filteredList.forEach(scoreNumber=>{
+                                                    for(var i=0;i<result.length;i++){
+                                                        if(result[i].score == scoreNumber){
+                                                            recommendedProducts.push(result[i]);
+                                                        }
+                                                    }    
+                                                });
+                                                console.log("Response Output");
+                                                console.log(recommendedProducts.slice(0,10));
+                                                res.json({ message: 'true', type:'bill' ,recommendedProducts:recommendedProducts.slice(0,10)});
                                                 res.end();
                                             }
-                                            flag++; 
+                                            flag++;
                                         }
                                     }
-                               });
-                               
+                                });
                             });
                         }
                     }
                 });
-
-            }else{       
-                // items exist on cart so recommend same products
-                console.log("FROM CART");                
-                var recommendedProducts = [];
-                var recommendedProductsID = [];                
-                var flag=1;
-                currentProduct.forEach(element => {
-
-                    var bestScore = 0;
-                    db.query('SELECT productID,productname,productdesc,productsize,productcategory,productcolor,productbrand,productprice,productquantity from products', function (error, otherProduct, fields) {
-                        if (error){
-                            throw error;
-                            }
-                            else{
-                            if(otherProduct.length<1){
-                                res.json({ message: 'false' });
+            }else{
+                console.log("Products On Cart");
+                var flag = 1;
+                var result = [];
+                cartProducts.forEach(cartElement =>{
+                    db.query('SELECT * from products', function (error, products, fields) {
+                        if(error) throw error;
+                        else{
+                            if(products.length<1){
+                                console.log("No Products");
                                 res.end();
                             }else{
-                                console.log("For: "+element.productName)
-                                
-                                for (var j in otherProduct) {
-
-                                    var matchScore = 0;
-                                    console.log("For "+otherProduct[j].productname);
-                                    if(element.productBrand == otherProduct[j].productbrand){
-                                        matchScore++;
-                                        console.log("Brand");
-                                        console.log(element.productBrand);
-                                        console.log(matchScore);
+                                products.forEach(productElement => {                             
+                                    var score = 0;
+                                    if(cartElement.productBrand == productElement.productbrand){
+                                        score++;
                                     }
-                                    if(element.productCat == otherProduct[j].productcategory){
-                                        console.log("Cat");
-                                        console.log(element.productCat);
-                                        matchScore++;
-                                        console.log(matchScore);                                      
+                                    if(cartElement.productCat == productElement.productcategory){
+                                        score++;
                                     }
-                                    if(element.productColor == otherProduct[j].productcolor){
-                                        console.log("Color");
-                                        console.log(element.productColor);
-                                        matchScore++;
-                                        console.log(matchScore);                                
+                                    if(cartElement.productColor == productElement.productcolor){
+                                        score++;
                                     }
-                                    if(element.productName != otherProduct[j].productname){
-                                        if(!recommendedProductsID.contains(otherProduct[j].productID)){
-                                            
-                                            if(recommendedProductsID.length > 11){
-                                                if((matchScore > bestScore) && (matchScore != 0)){
-                                                    console.log("match: "+matchScore);
-                                                    console.log("best: "+bestScore);                                    
-                                                    bestScore = matchScore;
-                                                    recommendedProducts.push(otherProduct[j]);
-                                                    recommendedProductsID.push(otherProduct[j].productID);                                                
-                                                }
+                                    if(score != 0){
+                                        if(cartElement.productName != productElement.productname){
+                                            if(!result.contains(productElement.productID)){
+                                                result.push({id:productElement.productID,score:score});
                                             }
-                                            else{
-                                                if((matchScore >= bestScore) && (matchScore != 0)){
-                                                    console.log("match: "+matchScore);
-                                                    console.log("best: "+bestScore);                                    
-                                                    bestScore = matchScore;
-                                                    recommendedProducts.push(otherProduct[j]);
-                                                    recommendedProductsID.push(otherProduct[j].productID);                                                
-                                                }
-                                                else{
-                                                    //match score is zero so recommend from products
-                                                     
-                                                }
-                                            }
-                                            
                                         }
                                     }
-                                }
-                                if(flag==currentProduct.length){
-                                    console.log(recommendedProducts);
-                                    if(recommendedProducts.length == 0){
+                                });
+                                if(flag == cartProducts.length){
+                                    console.log("Final Reults");
+                                    console.log(result);        
 
-                                    }else{
-                                        res.json({ message: 'true', type:'recommended' ,recommendedProducts:recommendedProducts});                
-                                        res.end();
+                                    // Sorting
+                                    var scoreArray = []; 
+                                    for(var i=0;i<result.length;i++){
+                                        scoreArray.push(result[i].score);
                                     }
+                                    console.log(scoreArray);
+                                    
+                                    console.log("Original array: " + scoreArray);
+                                    var sortedArray = quick_Sort(scoreArray);
+                                    console.log("Sorted array: " + sortedArray);
+
+                                    // Final sorted list
+                                    console.log("Final Sorted List i.e Only 10 items");
+                                    console.log(sortedArray.slice(0,10));
+
+                                    var filteredList = removeDuplicates(sortedArray.slice(0,10));
+                                    console.log("Filtered List");
+                                    console.log(filteredList);
+
+                                    // find product of respective score from final sorted list
+                                    var recommendedProducts = [];
+                                    filteredList.forEach(scoreNumber=>{
+                                        for(var i=0;i<result.length;i++){
+                                            if(result[i].score == scoreNumber){
+                                                console.log(result[i].id);
+                                                recommendedProducts.push(result[i]);
+                                            }
+                                        }    
+                                    });
+                                    res.json({ message: 'true', type:'cart' ,recommendedProducts:recommendedProducts.slice(0,10)});
+                                    res.end();
                                 }
-                                flag++; 
+                                flag++;
                             }
                         }
-                   });
-                   
+                    });
                 });
-                
             }
         }
     });
- });
+});
+
+
+Array.prototype.contains = function(element){
+    return this.indexOf(element) > -1;
+};
+
+function removeDuplicates(arr){
+    let unique_array = []
+    for(let i = 0;i < arr.length; i++){
+        if(unique_array.indexOf(arr[i]) == -1){
+            unique_array.push(arr[i])
+        }
+    }
+    return unique_array
+}
+
+function quick_Sort(origArray) {
+    if (origArray.length <= 1) { 
+        return origArray;
+    } else {
+        var left = [];
+        var right = [];
+        var newArray = [];
+        var pivot = origArray.pop();
+        var length = origArray.length;
+
+        for (var i = 0; i < length; i++) {
+            if (origArray[i] >= pivot) {
+                left.push(origArray[i]);
+            } else {
+                right.push(origArray[i]);
+            }
+        }
+        return newArray.concat(quick_Sort(left), pivot, quick_Sort(right));
+    }
+}
  
  app.post('/api/getCheckoutBill', function (req, res) {
     var data={
