@@ -240,13 +240,13 @@ app.post('/api/logincustomer', function (req, res) {
     var data={
         userName: req.body.userName
     }
-    db.query('SELECT * from productOnCart WHERE userName=?', [data.userName], function (error, currentProduct, fields) {
+    db.query('SELECT * from productOnCart WHERE userName="anup"', function (error, currentProduct, fields) {
         if (error){
             throw error;
            }
            else{
             if(currentProduct.length<1){              
-                db.query('SELECT * from sales INNER JOIN products ON sales.productID = products.productID WHERE username=?',[data.userName], function (error, salesResults, fields) {
+                db.query('SELECT * from sales INNER JOIN products ON sales.productID = products.productID WHERE username="anup"',[data.userName], function (error, salesResults, fields) {
                     if (error){
                         throw error;
                        }
