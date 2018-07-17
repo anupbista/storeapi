@@ -204,6 +204,7 @@ app.post('/api/logincustomer', function (req, res) {
                 res.json({ message: 'false' });
                 res.end();
             }else{
+                console.log(results);
                 res.json({ message: 'true' ,orderData:results});
                 res.end();
             }
@@ -235,12 +236,15 @@ app.post('/api/logincustomer', function (req, res) {
 
 
 app.post('/api/getrecommendedProducts', function (req, res) {
-    db.query('SELECT * from productOnCart WHERE userName="anup"', function (error, cartProducts, fields) {
+    var data={
+        userName: req.body.userName
+    }
+    db.query('SELECT * from productOnCart WHERE userName=?',[data.userName], function (error, cartProducts, fields) {
         if(error) throw error;
         else{
             if(cartProducts.length<1){
                 console.log("No Products On Cart");
-                db.query('SELECT * from checkoutBill INNER JOIN products ON checkoutBill.productID=products.productID WHERE userName="anup"', function (error, billProducts, fields) {
+                db.query('SELECT * from checkoutBill INNER JOIN products ON checkoutBill.productID=products.productID WHERE userName=?',[data.userName], function (error, billProducts, fields) {
                     if(error) throw error;
                     else{
                         if(billProducts.length<1){
