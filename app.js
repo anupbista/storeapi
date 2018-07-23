@@ -417,6 +417,96 @@ app.post('/api/getrecommendedProducts', function (req, res) {
 });
 
 
+// get recommendation on scanned product
+app.post('/api/getScanrecommendedProducts', function (req, res) {
+    var data={
+        productID: req.body.productID
+    }
+    db.query('SELECT * from products WHERE productID=?',[data.productID], function (error, scanProducts, fields) {
+        if(error) throw error;
+        else{
+            if(scanProducts.length<1){
+                console.log("No Products of such ID");
+                res.end();
+            }else{
+                console.log("Products Exists of such ID");
+                var flag = 1;
+                var result = [];
+                scanProducts.forEach(scanElement =>{
+                    db.query('SELECT * from products', function (error, products, fields) {
+                        if(error) throw error;
+                        else{
+                            if(products.length<1){
+                                console.log("No Products");
+                                res.end();
+                            }else{
+                                products.forEach(productElement => {                             
+                                    var score = 0;
+                                    if(scanElement.productbrand == productElement.productbrand){
+                                        score++;
+                                    }
+                                    if(scanElement.productcat == productElement.productcategory){
+                                        score++;
+                                    }
+                                    if(scanElement.productcolor == productElement.productcolor){
+                                        score++;
+                                    }
+                                    if(score != 0){
+                                        if(scanElement.productname != productElement.productname){
+                                            if(!result.contains(productElement.productID)){
+                                                result.push({id:productElement.productID,score:score});
+                                            }
+                                        }
+                                    }
+                                });
+                                if(flag == scanProducts.length){
+                                    console.log("Final Reults");
+                                    console.log(result);        
+
+                                    // Sorting
+                                    var scoreArray = []; 
+                                    for(var i=0;i<result.length;i++){
+                                        scoreArray.push(result[i].score);
+                                    }
+                                    console.log(scoreArray);
+                                    
+                                    console.log("Original array: " + scoreArray);
+                                    var sortedArray = quick_Sort(scoreArray);
+                                    console.log("Sorted array: " + sortedArray);
+
+                                    // Final sorted list
+                                    console.log("Final Sorted List i.e Only 6 items");
+                                    console.log(sortedArray.slice(0,6));
+
+                                    var filteredList = removeDuplicates(sortedArray.slice(0,6));
+                                    console.log("Filtered List");
+                                    console.log(filteredList);
+
+                                    // find product of respective score from final sorted list
+                                    var recommendedProducts = [];
+                                    filteredList.forEach(scoreNumber=>{
+                                        for(var i=0;i<result.length;i++){
+                                            if(result[i].score == scoreNumber){
+                                                console.log(result[i].id);
+                                                recommendedProducts.push(result[i]);
+                                            }
+                                        }    
+                                    });
+                                    res.json({ message: 'true', type:'scan' ,recommendedProducts:recommendedProducts.slice(0,6)});
+                                    res.end();
+                                }
+                                flag++;
+                            }
+                        }
+                    });
+                });
+            }
+        }
+    });
+});
+
+
+
 Array.prototype.contains = function(element){
     return this.indexOf(element) > -1;
 };
