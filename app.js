@@ -445,7 +445,7 @@ app.post('/api/getScanrecommendedProducts', function (req, res) {
                                     if(scanElement.productbrand == productElement.productbrand){
                                         score++;
                                     }
-                                    if(scanElement.productcat == productElement.productcategory){
+                                    if(scanElement.productcategory == productElement.productcategory){
                                         score++;
                                     }
                                     if(scanElement.productcolor == productElement.productcolor){
